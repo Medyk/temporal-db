@@ -1,0 +1,72 @@
+---
+
+services:
+  db:
+    #image: postgres:18
+    build:
+      dockerfile_inline: |
+        FROM postgres:18
+        RUN apt-get update \
+            && apt-get -y install postgresql-18-cron \
+            && rm -rf /var/lib/apt/lists/*
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    command: >
+      postgres 
+      -c shared_preload_libraries=pg_cron 
+      -c cron.database_name=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro,z
+
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: postgres@example.com
+      PGADMIN_DEFAULT_PASSWORD: postgres
+    configs:
+      - source: pgadmin
+        target: /pgadmin4/servers.json
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+
+  flyway:
+    image: flyway/flyway:12
+    user: 1000:1000
+    environment:
+      FLYWAY_CONNECT_RETRIES: 10
+      FLYWAY_USER: docker
+      FLYWAY_PASSWORD: docker
+      FLYWAY_URL: jdbc:postgresql://db:5432/docker
+    command: migrate
+    volumes:
+      - ./flyway:/flyway/sql:ro,z
+    restart: "no"
+    depends_on:
+      - db
+
+
+configs:
+  pgadmin:
+    content: |
+      {
+          "Servers": {
+              "1": {
+                  "Name": "db",
+                  "Port": 5432,
+                  "Username": "postgres",
+                  "Host": "db",
+                  "MaintenanceDB": "postgres"
+              }
+          }
+      }
+
+
+volumes:
+  db_data:
