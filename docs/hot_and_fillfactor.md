@@ -1,5 +1,3 @@
----
-
 # explain fill_factor=70 and 8kB page
 
 PostgreSQL stores all table data in fixed 8 KB (8,192-byte) disk pages, uses fillfactor = 70 to reserve 30% of each page so updated row versions stay on the same page (enabling zero-index-write HOT updates), and automatically compresses or offloads columns via TOAST whenever a row exceeds roughly 2 KB.
